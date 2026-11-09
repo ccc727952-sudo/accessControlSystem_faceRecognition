@@ -1,3 +1,7 @@
+# 门禁人脸识别系统 —— CMake 构建脚本
+# 基于 Qt 6.8 + CMake，链接 Quick（QML 界面）与 Mqtt 模块；
+# 同时把原生 sqlite3.c 一起编译进可执行文件，因为 Qt 内置 SQLite
+# 缺少 load_extension，无法加载 sqlite-vec 向量检索扩展。
 cmake_minimum_required(VERSION 3.16)
 
 # 只有 `CXX` 时 CMake **不会报错**，但会静默跳过 `.c` 文件不编译；

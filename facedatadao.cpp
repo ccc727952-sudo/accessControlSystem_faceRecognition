@@ -1,10 +1,15 @@
+/*
+ * @brief 人脸记录数据访问层的实现
+ * 构造时在可执行文件同级目录打开 face.db，启用扩展加载能力并加载 sqlite-vec.dll，
+ * 随后创建 vec0 虚拟表 t_face_data；add() 通过预编译语句把人脸记录写入表中。
+ * 不用 Qt SQL 的原因：Qt 自带 SQLite 被裁剪掉了 load_extension，
+ * 无法加载 sqlite-vec.dll，所以本工程直接编译原生 sqlite3.c 并使用 C API。
+*/
 #include "facedatadao.h"
 #include <QDebug>
 #include <QCoreApplication>
 
-// 为什么不用 Qt SQL：Qt 自带的 SQLite 被裁剪掉了 load_extension，
-// 无法加载 sqlite-vec.dll 扩展。所以本工程直接编译原生 sqlite3.c，
-// 用 sqlite3_open / sqlite3_db_config / sqlite3_load_extension 这套 C API。
+// 构造函数内分三步：打开数据库 → 启用扩展加载 → 加载 sqlite-vec.dll（详见文件头说明）
 FaceDataDao::FaceDataDao(QObject *parent)
     : QObject{parent}
 {

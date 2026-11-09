@@ -1,3 +1,9 @@
+/*
+ * @brief MQTT 通信工具类的实现
+ * 文件顶部集中定义 broker 地址、端口、账号密码与订阅主题，便于统一修改。
+ * 构造时创建 QMqttClient 并异步发起连接，连接成功后在 stateChanged 回调里订阅主题；
+ * 每条消息到达时把 payload 交给 FaceDataLogic::saveDataToDb() 解析入库。
+*/
 #include "mqttutil.h"
 #include <QDebug>
 #include "facedatalogic.h"

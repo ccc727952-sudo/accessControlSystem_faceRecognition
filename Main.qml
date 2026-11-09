@@ -1,3 +1,9 @@
+/*
+ * @brief 主窗口
+ * 应用主界面，用 GridLayout 实现左右分栏（窗口宽度小于 400 时改为上下排列）：
+ * 左侧显示 Hello World 文本，右侧提供明暗主题切换按钮。
+ * 配色跟随 Application.styleHints.colorScheme 自动适配系统主题。
+*/
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls.Basic
