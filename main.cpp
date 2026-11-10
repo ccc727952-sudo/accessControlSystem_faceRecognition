@@ -2,12 +2,15 @@
 #include <QQmlApplicationEngine>
 #include "mqttutil.h"
 #include "facerecognitionmanager.h"
+#include "weatherservice.h"
 #include <QQuickStyle>
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
     QQuickStyle::setStyle("Basic");
     qmlRegisterType<FaceRecognitionManager>("cn.rh",1,0,"FaceRecognitionManager");
+    // 实时天气服务，QML 里用 WeatherService { id: weatherService } 创建
+    qmlRegisterType<WeatherService>("cn.rh",1,0,"WeatherService");
     QQmlApplicationEngine engine;
     QObject::connect(
         &engine,

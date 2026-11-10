@@ -19,6 +19,12 @@ ApplicationWindow {
     FaceRecognitionManager{
         id:faceRecognitionManager
     }
+
+    // 实时天气：构造时立即请求一次，之后每 30 分钟自动刷新
+    // 子属性通过 Q_PROPERTY 直接绑定到下方界面，无需手动赋值
+    WeatherService {
+        id: weatherService
+    }
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 16
@@ -98,34 +104,87 @@ ApplicationWindow {
                 Layout.fillHeight: true
                 radius: 12
                 color: "#313244"
+                clip: true // 裁剪掉超出圆角区域的背景图
 
-                ColumnLayout {
+                // 天气背景图：半透明铺满，不遮挡上层文字
+                Image {
+                    anchors.fill: parent//铺满父容器
+                    source: weatherService.backgroundSource//天气背景图，路径由 C++ 侧拼好（resources/weather/xxx.png）
+                    fillMode: Image.PreserveAspectCrop//保持比例，裁剪掉超出区域
+                    opacity: 0.25//半透明，不遮挡上层文字
+                }
+
+                // 三段式布局：左时间 / 中间弹簧 / 右天气，把天气推到右侧空白处
+                RowLayout {
                     anchors.fill: parent
                     anchors.margins: 16
-                    spacing: 6
+                    spacing: 12
 
-                    // 时间
-                    Text {
-                        id: timeText
-                        text: Qt.formatDateTime(new Date(), "hh:mm:ss")
-                        color: "#cdd6f4"
-                        font.pixelSize: 34
-                        font.bold: true
+                    // 左侧：时间 + 日期
+                    ColumnLayout {
+                        Layout.alignment: Qt.AlignVCenter
+                        spacing: 6
+
+                        // 时间
+                        Text {
+                            id: timeText
+                            text: Qt.formatDateTime(new Date(), "hh:mm:ss")
+                            color: "#cdd6f4"
+                            font.pixelSize: 34
+                            font.bold: true
+                        }
+
+                        // 日期
+                        Text {
+                            text: Qt.formatDateTime(new Date(), "yyyy-MM-dd dddd")
+                            color: "#a6adc8"
+                            font.pixelSize: 15
+                        }
                     }
 
-                    // 日期
-                    Text {
-                        text: Qt.formatDateTime(new Date(), "yyyy-MM-dd dddd")
-                        color: "#a6adc8"
-                        font.pixelSize: 15
+                    // 弹簧：占满中间空白，把天气信息推到右侧
+                    Item {
+                        Layout.fillWidth: true
                     }
 
-                    // 天气（此处为占位，可对接天气 API 或后端数据）
-                    Text {
-                        id: weatherText
-                        text: "☀️ 晴  24°C"
-                        color: "#89b4fa"
-                        font.pixelSize: 18
+                    // 右侧：实时天气，图标随接口的 wea_img 字段切换
+                    RowLayout {
+                        Layout.alignment: Qt.AlignVCenter
+                        spacing: 10
+
+                        // 天气图标，路径由 C++ 侧拼好（resources/weather/xxx.png）
+                        Image {
+                            source: weatherService.iconSource
+                            sourceSize: Qt.size(44, 44) // 限制解码尺寸，省内存
+                            fillMode: Image.PreserveAspectFit
+                            smooth: true
+                        }
+
+                        ColumnLayout {
+                            spacing: 2
+
+                            // 第一行：城市 + 天气 + 当前温度，如“成都  阴 13°C”
+                            Text {
+                                Layout.fillWidth: true
+                                horizontalAlignment: Text.AlignRight
+                                elide: Text.ElideRight
+                                text: weatherService.city + "  " + weatherService.summary
+                                color: "#89b4fa"
+                                font.pixelSize: 18
+                            }
+
+                            // 第二行：湿度 + 风向 + 风力，如“湿度 52%  北风 02级”
+                            Text {
+                                Layout.fillWidth: true
+                                horizontalAlignment: Text.AlignRight
+                                elide: Text.ElideRight
+                                text: "湿度 " + weatherService.humidity
+                                      + "  " + weatherService.win
+                                      + " " + weatherService.winSpeed
+                                color: "#a6adc8"
+                                font.pixelSize: 13
+                            }
+                        }
                     }
                 }
             }

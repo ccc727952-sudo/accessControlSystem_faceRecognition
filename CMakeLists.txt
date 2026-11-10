@@ -13,7 +13,8 @@ find_package(OpenCV QUIET)
 #QuickControls2供了一整套现成的 UI 控件（如按钮、滑块、菜单等），用来在 Qt Quick（QML）中快速构建完整的用户界面
 # TextToSpeech文字转语音
 # Multimedia多媒体
-find_package(Qt6 REQUIRED COMPONENTS Quick Multimedia Mqtt TextToSpeech QuickControls2)
+# Network：请求易客天气 HTTP 接口
+find_package(Qt6 REQUIRED COMPONENTS Quick Multimedia Mqtt TextToSpeech QuickControls2 Network)
 #dlib路径
 set(dlib_DIR "D:/WorkProgram/dlib/build/install/lib/cmake/dlib")
 find_package(dlib REQUIRED)
@@ -61,6 +62,8 @@ SOURCES facedetector.cpp facedetector.h
 SOURCES livenessdetector.cpp livenessdetector.h
 SOURCES dlibutil.cpp dlibutil.h
 SOURCES speechutils.cpp speechutils.h
+# 实时天气服务（HTTP 请求 + JSON 解析 + 图标路径）
+SOURCES weatherservice.cpp weatherservice.h
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
@@ -76,6 +79,8 @@ set_target_properties(appaccessControlSystem_faceRecognition PROPERTIES
 # 【模型目录】编译进程序（modelpaths.cpp 里再用环境变量 FACE_MODEL_DIR 覆盖）
 target_compile_definitions(appaccessControlSystem_faceRecognition PRIVATE
     FACE_MODEL_DIR="${CMAKE_CURRENT_SOURCE_DIR}/resources/model"
+    # 天气图标目录，运行时可被环境变量 WEATHER_IMG_DIR 覆盖
+    WEATHER_IMG_DIR="${CMAKE_CURRENT_SOURCE_DIR}/resources/weather"
 )
 target_link_libraries(appaccessControlSystem_faceRecognition
     PRIVATE Qt6::Quick
@@ -83,6 +88,7 @@ target_link_libraries(appaccessControlSystem_faceRecognition
     Qt6::Multimedia
     Qt6::TextToSpeech
     Qt6::QuickControls2
+    Qt6::Network#请求易客天气 HTTP 接口//Network是Qt6的网络模块，用于发送HTTP请求
     dlib::dlib
 )
 
