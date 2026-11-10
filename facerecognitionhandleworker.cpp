@@ -52,7 +52,7 @@ void FaceRecognitionHandleWorker::handleFaceRecognition(const cv::Mat& frame){
         //余弦距离范围 [0,2]，0 表示方向完全一致，2表示完全相反，对于人脸特征同一个人的不同照片之间余弦相似度通常再0.5以上
         auto match=this->faceDataDao.findNearest(features);
         if(match)qDebug()<<"match->distance:"<<match->distance;
-        if(match.has_value() && match->distance<0.5f){
+        if(match.has_value() && match->distance<0.04f){
             qDebug()<<"识别成功"<<match->name<<"距离"<<match->distance;
             SpeechUtils::getInstance()->speek("识别通过，请通行!");
             work_state=START;
@@ -63,8 +63,9 @@ void FaceRecognitionHandleWorker::handleFaceRecognition(const cv::Mat& frame){
             bool successForClound=true;
             if(successForClound){
                 qDebug()<<"云端识别通过，以及发送串口消息打开闸门";
-                SpeechUtils::getInstance()->speek("识别通过，请通行!",3000);
+                SpeechUtils::getInstance()->speek("云端识别通过，请通行!",3000);
                 isFinished=true;
+                work_state=START;
             }else{
                 qDebug()<<"识别失败，请录入人脸";
                 SpeechUtils::getInstance()->speek("识别失败，请录入人脸!",3000);
