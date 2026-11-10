@@ -1,9 +1,3 @@
-/*
- * @brief 人脸记录业务逻辑层的实现
- * 实现 saveDataToDb()：解析 MQTT 下发的 JSON（sn/name/phone/address/features），
- * 把 base64 编码的 features 解码为 128 维 float 的原始二进制，
- * 封装成 FaceData 对象后调用 FaceDataDao 写入数据库。
-*/
 #include "facedatalogic.h"
 #include <QJsonDocument>
 #include <QJsonObject>

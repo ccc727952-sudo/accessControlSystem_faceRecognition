@@ -1,15 +1,10 @@
-/*
- * @brief 人脸记录数据访问层的实现
- * 构造时在可执行文件同级目录打开 face.db，启用扩展加载能力并加载 sqlite-vec.dll，
- * 随后创建 vec0 虚拟表 t_face_data；add() 通过预编译语句把人脸记录写入表中。
- * 不用 Qt SQL 的原因：Qt 自带 SQLite 被裁剪掉了 load_extension，
- * 无法加载 sqlite-vec.dll，所以本工程直接编译原生 sqlite3.c 并使用 C API。
-*/
 #include "facedatadao.h"
 #include <QDebug>
 #include <QCoreApplication>
 
-// 构造函数内分三步：打开数据库 → 启用扩展加载 → 加载 sqlite-vec.dll（详见文件头说明）
+// 为什么不用 Qt SQL：Qt 自带的 SQLite 被裁剪掉了 load_extension，
+// 无法加载 sqlite-vec.dll 扩展。所以本工程直接编译原生 sqlite3.c，
+// 用 sqlite3_open / sqlite3_db_config / sqlite3_load_extension 这套 C API。
 FaceDataDao::FaceDataDao(QObject *parent)
     : QObject{parent}
 {
@@ -126,4 +121,54 @@ void FaceDataDao::add(const FaceData &data)
     }
 
     sqlite3_finalize(stmt);
+}
+
+std::optional<FaceMatchResult> FaceDataDao::findNearest(
+    const std::vector<float> &queryFeatures)
+{
+    if (!m_db) {
+        qDebug() << "查询失败: 数据库连接未打开";
+        return std::nullopt;
+    }
+    // 维度必须和 vec0 里声明的 float[128] 完全一致，否则 blob 长度对不上
+    if (queryFeatures.size() != 128) {
+        qDebug() << "查询失败: 特征维度不匹配，当前维度:" << queryFeatures.size();
+        return std::nullopt;
+    }
+
+    const char *sql =
+        "SELECT id, name, distance FROM t_face_data "
+        "WHERE features MATCH ? AND k = 1;";   // k=1：只取最相似的一条
+
+    sqlite3_stmt *stmt = nullptr;
+    int rc = sqlite3_prepare_v2(m_db, sql, -1, &stmt, nullptr);
+    if (rc != SQLITE_OK) {
+        qDebug() << "prepare 失败:" << sqlite3_errmsg(m_db);
+        return std::nullopt;
+    }
+
+    // 把 vector<float> 按原始字节绑定到第 1 个 ?，SQLITE_TRANSIENT 让 SQLite 自己复制
+    sqlite3_bind_blob(stmt, 1, queryFeatures.data(),
+                      static_cast<int>(queryFeatures.size() * sizeof(float)),
+                      SQLITE_TRANSIENT);
+
+    FaceMatchResult result;
+    bool found = false;
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_ROW) {
+        result.id       = sqlite3_column_int(stmt, 0);
+        result.name     = QString::fromUtf8(
+            reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1)));
+        result.distance = static_cast<float>(sqlite3_column_double(stmt, 2));
+        found = true;
+    } else if (rc != SQLITE_DONE) {
+        qDebug() << "查询执行失败:" << sqlite3_errmsg(m_db);
+    }
+    sqlite3_finalize(stmt);
+
+    if (!found) {
+        qDebug() << "库中无匹配记录";
+        return std::nullopt;   // 空库 / 一条都没查到
+    }
+    return result;
 }

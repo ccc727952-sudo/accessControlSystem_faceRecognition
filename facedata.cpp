@@ -1,9 +1,3 @@
-/*
- * @brief 人脸记录实体类的实现
- * 实现 FaceData 的构造与各字段的 getter/setter。
- * 本类只作为层与层之间传递数据的载体，不含任何业务逻辑和数据库操作，
- * 持久化工作统一由 FaceDataDao 负责。
-*/
 #include "facedata.h"
 
 // 实体类只有构造与 getter/setter，无业务逻辑；数据由 FaceDataDao 统一入库。

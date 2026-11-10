@@ -1,9 +1,3 @@
-/*
- * @brief MQTT 通信工具类
- * 单例类，负责连接本地 EMQX broker、订阅 faceFeatures/# 人脸特征主题，
- * 并把收到的消息交给 FaceDataLogic 解析入库。
- * 拷贝构造与赋值运算符被禁用，保证全局只有一条 MQTT 连接。
-*/
 #ifndef MQTTUTIL_H
 #define MQTTUTIL_H
 

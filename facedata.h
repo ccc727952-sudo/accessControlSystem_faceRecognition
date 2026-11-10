@@ -1,9 +1,3 @@
-/*
- * @brief 人脸记录实体类
- * 人脸记录实体类，字段与 vec0 虚拟表 t_face_data 的列一一对应。
- * features 保存 128 维 float 的原始二进制（128*4 = 512 字节），
- * 由 MQTT 消息里 features 字段的 base64 字符串解码而来。
-*/
 #ifndef FACEDATA_H
 #define FACEDATA_H
 

@@ -1,8 +1,4 @@
 /*
- * @brief SQLite 数据库头文件
- * 包含 SQLite 数据库的 C 接口定义。
- */
-/*
 ** 2001-09-15
 **
 ** The author disclaims copyright to this source code.  In place of
