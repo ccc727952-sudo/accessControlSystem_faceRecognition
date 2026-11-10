@@ -24,7 +24,7 @@ namespace {
 
 // 易客天气的免费测试账号（正式使用建议改成读环境变量，避免密钥进仓库）
 const char *kAppId = "84979327";
-const char *kAppSecret = "JlRJLFN88";
+const char *kAppSecret = "JlRJLFN3";
 
 // 刷新间隔：30 分钟。免费接口每天 300 次限额，完全够用
 const int kRefreshIntervalMs = 30 * 60 * 1000;

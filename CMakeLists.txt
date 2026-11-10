@@ -81,6 +81,8 @@ target_compile_definitions(appaccessControlSystem_faceRecognition PRIVATE
     FACE_MODEL_DIR="${CMAKE_CURRENT_SOURCE_DIR}/resources/model"
     # 天气图标目录，运行时可被环境变量 WEATHER_IMG_DIR 覆盖
     WEATHER_IMG_DIR="${CMAKE_CURRENT_SOURCE_DIR}/resources/weather"
+    # 人脸录入程序 exe 路径，点击“人脸录入”按钮时由 QProcess 启动（可被环境变量 FACE_INPUT_EXE 覆盖）
+    FACE_INPUT_EXE="C:/Users/34976/Desktop/QT/1106/mycode/accessControlSystem_faceInput/build/Desktop_Qt_6_8_3_MSVC2022_64bit_Release/appaccessControlSystem_faceInput.exe"
 )
 target_link_libraries(appaccessControlSystem_faceRecognition
     PRIVATE Qt6::Quick

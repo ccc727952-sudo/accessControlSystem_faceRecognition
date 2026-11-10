@@ -218,9 +218,9 @@ ApplicationWindow {
                     }
 
                     onClicked: {
-                        // 扩展点：识别终端也能进录入页，
-                        // Day4 不实现，先留按钮占位，避免超纲。
-                        console.log("触发人脸录入（扩展功能，Day4 未实现）")
+                        // 启动独立的人脸录入程序（QProcess 分离进程，主程序不阻塞）
+                        if (!faceRecognitionManager.launchFaceInput())
+                            console.warn("人脸录入程序启动失败，请检查 exe 路径或先编译 faceInput 工程")
                     }
                 }
             }
