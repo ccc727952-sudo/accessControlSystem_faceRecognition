@@ -70,9 +70,8 @@ void FaceRecognitionHandleWorker::handleFaceRecognition(const cv::Mat& frame){
             isFinished=true;
         }else{
             //本地没有匹配上：把 128 维特征经 MQTT 发给后端，等云端识别结果
-            QString cloudName;
-            if(this->recognizeOnCloud(features,&cloudName)){
-                qDebug()<<"云端识别通过:"<<cloudName;
+            if(this->recognizeOnCloud(features)){
+                qDebug()<<"云端识别通过";
                 SpeechUtils::getInstance()->speek("云端识别通过，请通行!",3000);
                 isFinished=true;
             }else{
@@ -94,8 +93,7 @@ void FaceRecognitionHandleWorker::handleFaceRecognition(const cv::Mat& frame){
 }
 
 // 云端识别：发布特征 -> 阻塞等响应（最多 3 秒），超时/未连接一律判负
-bool FaceRecognitionHandleWorker::recognizeOnCloud(const std::vector<float> &features,
-                                                   QString *matchedName)
+bool FaceRecognitionHandleWorker::recognizeOnCloud(const std::vector<float> &features)
 {
     if (features.empty())
         return false;
@@ -108,21 +106,20 @@ bool FaceRecognitionHandleWorker::recognizeOnCloud(const std::vector<float> &fea
 
     // MQTT 对象活在 GUI 线程：用 BlockingQueuedConnection 借用它的线程发布请求，
     // 这里只会阻塞识别线程，界面和预览不受影响
-    QString requestId;
+    bool sent = false;
     const bool invoked = QMetaObject::invokeMethod(
         &mqtt, "requestCloudRecognition",
         Qt::BlockingQueuedConnection,
-        Q_RETURN_ARG(QString, requestId),
+        Q_RETURN_ARG(bool, sent),
         Q_ARG(QByteArray, raw.toBase64()));
 
-    if (!invoked || requestId.isEmpty()) {
+    if (!invoked || !sent) {
         qDebug() << "云端识别请求发送失败（MQTT 未连接？）";
         return false;
     }
 
     bool passed = false;
     bool received = false;
-    QString resultName;
 
     // 在识别线程里跑局部事件循环，等主线程把响应通过信号投递过来
     QEventLoop loop;
@@ -131,26 +128,22 @@ bool FaceRecognitionHandleWorker::recognizeOnCloud(const std::vector<float> &fea
 
     const QMetaObject::Connection conn = connect(
         &mqtt, &MqttUtil::cloudRecognitionResult, this,
-        [&](const QString &id, bool ok, const QString &name) {
-            if (id != requestId) return;   // 不是本次请求的响应，忽略（防止串包）
+        [&](bool ok) {
             passed = ok;
-            resultName = name;
             received = true;
             loop.quit();
-        });
-    connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
+        });// 云端识别结果信号槽，处理响应并退出事件循环
+    connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);// 3 秒后超时
 
     timer.start(3000);
-    loop.exec();
-    disconnect(conn);
+    loop.exec();// 阻塞等响应（最多 3 秒），超时/未连接一律判负
+    disconnect(conn);// 断开信号槽连接，防止重复触发
 
     if (!received) {
-        qDebug() << "云端识别超时，requestId =" << requestId;
+        qDebug() << "云端识别超时";
         return false;
     }
 
-    if (matchedName)
-        *matchedName = resultName;
     return passed;
 }
 

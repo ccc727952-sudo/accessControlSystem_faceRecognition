@@ -4,7 +4,6 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonParseError>
-#include <QUuid>
 #include "facedatalogic.h"
 
 // ===== MQTT 连接参数（集中放在文件顶部，按自己的 EMQX 配置修改）=====
@@ -17,8 +16,8 @@ static const QString  MQTT_CLIENT_ID   = "faceRecog-mqtt-client"; // 客户端 I
 static const QString  MQTT_TOPIC_FILTER = "faceFeatures/#";
 
 // ===== 云端人脸识别主题 =====
-// 请求：识别端 -> 后端，JSON { requestId, features(Base64 512 字节), timestamp }
-// 响应：后端 -> 识别端，JSON { requestId, passed, name }
+// 请求：识别端 -> 后端，JSON { features(Base64 512 字节), timestamp }
+// 响应：后端 -> 识别端，JSON { passed }
 static const QString  MQTT_TOPIC_CLOUD_REQ  = "faceRecog/cloud/request";
 static const QString  MQTT_TOPIC_CLOUD_RESP = "faceRecog/cloud/response";
 
@@ -70,7 +69,7 @@ void MqttUtil::subcribeFaceData()
     });
 }
 
-// 订阅云端识别结果：后端处理后把 {"requestId":..., "passed":..., "name":...} 发回来
+// 订阅云端识别结果：后端处理后把 {"passed":true} 发回来
 void MqttUtil::subscribeCloudResult()
 {
     QMqttSubscription *sub = this->client->subscribe(QMqttTopicFilter(MQTT_TOPIC_CLOUD_RESP));
@@ -87,29 +86,22 @@ void MqttUtil::subscribeCloudResult()
             return;
         }
 
-        const QJsonObject obj = doc.object();
-        const QString requestId = obj.value("requestId").toString();
-        const bool passed = obj.value("passed").toBool();
-        const QString name = obj.value("name").toString();
+        const bool passed = doc.object().value("passed").toBool();
 
-        qDebug() << "收到云端识别结果:" << requestId << "passed =" << passed << "name =" << name;
-        emit this->cloudRecognitionResult(requestId, passed, name);
+        qDebug() << "收到云端识别结果: passed =" << passed;
+        emit this->cloudRecognitionResult(passed);
     });
 }
 
 // 发布云端识别请求：features 已是 Base64 字符串，直接塞进 JSON
-QString MqttUtil::requestCloudRecognition(const QByteArray &featureBase64)
+bool MqttUtil::requestCloudRecognition(const QByteArray &featureBase64)
 {
     if (!this->client || this->client->state() != QMqttClient::Connected) {
         qWarning() << "MQTT 未连接，无法发起云端识别";
-        return QString();
+        return false;
     }
 
-    // 每次请求一个唯一 id，识别线程靠它把响应和请求配对（避免串包）
-    const QString requestId = QUuid::createUuid().toString(QUuid::WithoutBraces);
-
     QJsonObject obj;
-    obj.insert(QStringLiteral("requestId"), requestId);
     obj.insert(QStringLiteral("features"), QString::fromLatin1(featureBase64));
     obj.insert(QStringLiteral("timestamp"), QDateTime::currentMSecsSinceEpoch());
 
@@ -119,9 +111,9 @@ QString MqttUtil::requestCloudRecognition(const QByteArray &featureBase64)
 
     if (msgId == -1) {
         qWarning() << "云端识别请求发布失败:" << MQTT_TOPIC_CLOUD_REQ;
-        return QString();
+        return false;
     }
 
-    qDebug() << "已发送云端识别请求:" << requestId;
-    return requestId;
+    qDebug() << "已发送云端识别请求";
+    return true;
 }
