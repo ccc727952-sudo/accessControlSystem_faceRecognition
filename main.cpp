@@ -3,10 +3,17 @@
 #include "mqttutil.h"
 #include "facerecognitionmanager.h"
 #include "weatherservice.h"
+#include "networkconnection.h"
 #include <QQuickStyle>
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
+
+    // 启动第一件事：读网络配置（后续用它连 WiFi / 组网）
+    NetworkConnection networkConnection;
+    networkConnection.loadConfig();
+    networkConnection.dump();
+
     QQuickStyle::setStyle("Basic");
     qmlRegisterType<FaceRecognitionManager>("cn.rh",1,0,"FaceRecognitionManager");
     // 实时天气服务，QML 里用 WeatherService { id: weatherService } 创建

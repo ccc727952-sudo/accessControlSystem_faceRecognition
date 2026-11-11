@@ -64,6 +64,8 @@ SOURCES dlibutil.cpp dlibutil.h
 SOURCES speechutils.cpp speechutils.h
 # 实时天气服务（HTTP 请求 + JSON 解析 + 图标路径）
 SOURCES weatherservice.cpp weatherservice.h
+# 网络配置读取（Network.ini）
+SOURCES networkconnection.cpp networkconnection.h
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
@@ -83,6 +85,8 @@ target_compile_definitions(appaccessControlSystem_faceRecognition PRIVATE
     WEATHER_IMG_DIR="${CMAKE_CURRENT_SOURCE_DIR}/resources/weather"
     # 人脸录入程序 exe 路径，点击“人脸录入”按钮时由 QProcess 启动（可被环境变量 FACE_INPUT_EXE 覆盖）
     FACE_INPUT_EXE="C:/Users/34976/Desktop/QT/1106/mycode/accessControlSystem_faceInput/build/Desktop_Qt_6_8_3_MSVC2022_64bit_Release/appaccessControlSystem_faceInput.exe"
+    # 网络配置文件路径，程序启动时读取（可被环境变量 NETWORK_INI 覆盖）
+    NETWORK_INI_PATH="C:/Users/34976/Desktop/QT/1106/mycode/accessControlSystem_faceInput/Network.ini"
 )
 target_link_libraries(appaccessControlSystem_faceRecognition
     PRIVATE Qt6::Quick
