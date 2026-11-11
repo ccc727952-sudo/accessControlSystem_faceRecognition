@@ -28,6 +28,10 @@ signals:
 public slots:
     void handleFaceRecognition(const cv::Mat& frame);
 private:
+    // 本地库没命中时，把特征经 MQTT 发给后端做云端识别，最长等待 timeoutMs 毫秒
+    // 返回是否放行；matchedName 非空时写回后端识别出的姓名
+    bool recognizeOnCloud(const std::vector<float>& features, QString *matchedName = nullptr);
+
     //128维
     std::vector<float> features;
     //人脸检测器

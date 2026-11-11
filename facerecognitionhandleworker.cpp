@@ -1,5 +1,16 @@
+// ===== facerecognitionhandleworker.cpp =====
+// 人脸识别处理子线程：负责处理摄像头帧，调用人脸检测器、活体检测器、特征提取工具、数据库操作。
+// 人脸检测器：使用 YOLOv8 模型，检测人脸位置。
+// 活体检测器：使用 LivenessNet 模型，判断是否为活体。
+// 特征提取工具：使用 Dlib 模型，提取人脸特征。
+// 数据库操作：使用 SQLite 数据库，存储人脸特征和匹配结果。
+//
 #include "facerecognitionhandleworker.h"
 #include "speechutils.h"
+#include "mqttutil.h"
+#include <QEventLoop>
+#include <QMetaObject>
+#include <QTimer>
 FaceRecognitionHandleWorker::FaceRecognitionHandleWorker(QObject *parent)
     : QObject{parent}
 {
@@ -58,19 +69,17 @@ void FaceRecognitionHandleWorker::handleFaceRecognition(const cv::Mat& frame){
             work_state=START;
             isFinished=true;
         }else{
-            //本地没有匹配上，发送HTTP请求到云端再认一次
-            //暂时没有写云端，所以模拟直接通过
-            bool successForClound=true;
-            if(successForClound){
-                qDebug()<<"云端识别通过，以及发送串口消息打开闸门";
+            //本地没有匹配上：把 128 维特征经 MQTT 发给后端，等云端识别结果
+            QString cloudName;
+            if(this->recognizeOnCloud(features,&cloudName)){
+                qDebug()<<"云端识别通过:"<<cloudName;
                 SpeechUtils::getInstance()->speek("云端识别通过，请通行!",3000);
                 isFinished=true;
-                work_state=START;
             }else{
                 qDebug()<<"识别失败，请录入人脸";
                 SpeechUtils::getInstance()->speek("识别失败，请录入人脸!",3000);
-                work_state=START;//本轮结束，重新走状态机
             }
+            work_state=START;//本轮结束，重新走状态机
         }
         break;
     }
@@ -82,5 +91,66 @@ void FaceRecognitionHandleWorker::handleFaceRecognition(const cv::Mat& frame){
     // qDebug()<<"[识别线程]：收到一帧"<<frame.cols<<"x"<<frame.rows;
     // //状态机
     // emit this->frameHandleFinished(false);
+}
+
+// 云端识别：发布特征 -> 阻塞等响应（最多 3 秒），超时/未连接一律判负
+bool FaceRecognitionHandleWorker::recognizeOnCloud(const std::vector<float> &features,
+                                                   QString *matchedName)
+{
+    if (features.empty())
+        return false;
+
+    // 128 个 float 的原始字节（512 字节）转 Base64，与后端约定 features 字段为 Base64 字符串
+    const QByteArray raw(reinterpret_cast<const char *>(features.data()),
+                         static_cast<int>(features.size() * sizeof(float)));
+
+    MqttUtil &mqtt = MqttUtil::getInstance();
+
+    // MQTT 对象活在 GUI 线程：用 BlockingQueuedConnection 借用它的线程发布请求，
+    // 这里只会阻塞识别线程，界面和预览不受影响
+    QString requestId;
+    const bool invoked = QMetaObject::invokeMethod(
+        &mqtt, "requestCloudRecognition",
+        Qt::BlockingQueuedConnection,
+        Q_RETURN_ARG(QString, requestId),
+        Q_ARG(QByteArray, raw.toBase64()));
+
+    if (!invoked || requestId.isEmpty()) {
+        qDebug() << "云端识别请求发送失败（MQTT 未连接？）";
+        return false;
+    }
+
+    bool passed = false;
+    bool received = false;
+    QString resultName;
+
+    // 在识别线程里跑局部事件循环，等主线程把响应通过信号投递过来
+    QEventLoop loop;
+    QTimer timer;
+    timer.setSingleShot(true);
+
+    const QMetaObject::Connection conn = connect(
+        &mqtt, &MqttUtil::cloudRecognitionResult, this,
+        [&](const QString &id, bool ok, const QString &name) {
+            if (id != requestId) return;   // 不是本次请求的响应，忽略（防止串包）
+            passed = ok;
+            resultName = name;
+            received = true;
+            loop.quit();
+        });
+    connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
+
+    timer.start(3000);
+    loop.exec();
+    disconnect(conn);
+
+    if (!received) {
+        qDebug() << "云端识别超时，requestId =" << requestId;
+        return false;
+    }
+
+    if (matchedName)
+        *matchedName = resultName;
+    return passed;
 }
 

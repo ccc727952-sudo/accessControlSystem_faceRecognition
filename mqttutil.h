@@ -2,6 +2,7 @@
 #define MQTTUTIL_H
 
 #include <QObject>
+#include <QByteArray>
 #include <QMqttClient>
 
 // MqttUtil：MQTT 通信工具类（单例）
@@ -22,9 +23,20 @@ public:
 
     // 订阅住户人脸特征消息（函数名沿用原型拼写，保持不变）
     void subcribeFaceData();
+
+    // 云端人脸识别：把一帧人脸的 128 维特征（Base64）发布到请求主题，
+    // 返回本次请求 id；未连接或发布失败返回空字符串，调用方据此直接判负。
+    // 注意：必须在 MqttUtil 所在线程（GUI 线程）调用。
+    Q_INVOKABLE QString requestCloudRecognition(const QByteArray &featureBase64);
+
 signals:
+    // 云端识别结果：requestId 用于与请求配对，passed 为是否放行，name 为空表示未识别
+    void cloudRecognitionResult(const QString &requestId, bool passed, const QString &name);
 
 private:
+    // 订阅云端识别响应主题
+    void subscribeCloudResult();
+
     QMqttClient *client = nullptr;
 };
 
